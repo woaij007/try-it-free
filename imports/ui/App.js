@@ -17,17 +17,20 @@ export default class App extends Component {
 
   getProducts() {
     return [
-      {_id: 1, key: 1, name: '装饰假花', picture: ['https://s3-us-west-2.amazonaws.com/try-it-free-images/WechatIMG1571.png'], contact: 'WeChat ID: pingjiaxin0530', number: 5, detail: '装饰假花，免费测评需要联系我', userId: '100', active: true, priority: 1, sponsered: false},
-      {_id: 2, key: 2, name: '凝胶坐垫', picture: ['https://s3-us-west-2.amazonaws.com/try-it-free-images/WechatIMG1569.png'], contact: 'WeChat ID: pingjiaxin0530', number: 4, detail: '凝胶坐垫，免费测评需要联系我', userId: '100', active: true, priority: 3, sponsered: false},
-      {_id: 3, key: 3, name: '杯托', picture: ['https://s3-us-west-2.amazonaws.com/try-it-free-images/WechatIMG1570.png'], contact: 'WeChat ID: pingjiaxin0530', number: 6, detail: '杯托，免费测评需要联系我', userId: '100', active: true, priority: 2, sponsered: false}
+      {_id: 1, key: 1, name: '装饰假花', picture: ['https://s3-us-west-2.amazonaws.com/try-it-free-images/WechatIMG1571.png'], contact: 'WeChat ID: pingjiaxin0530', number: 5, category: '家居', detail: '装饰假花，免费测评需要联系我', userId: '100', active: true, priority: 1, sponsered: false},
+      {_id: 2, key: 2, name: '凝胶坐垫', picture: ['https://s3-us-west-2.amazonaws.com/try-it-free-images/WechatIMG1569.png'], contact: 'WeChat ID: pingjiaxin0530', number: 4, category: '家居', detail: '凝胶坐垫，免费测评需要联系我', userId: '100', active: true, priority: 3, sponsered: false},
+      {_id: 3, key: 3, name: '杯托', picture: ['https://s3-us-west-2.amazonaws.com/try-it-free-images/WechatIMG1570.png'], contact: 'WeChat ID: pingjiaxin0530', number: 6, category: '家居', detail: '杯托，免费测评需要联系我', userId: '100', active: true, priority: 2, sponsered: false}
     ];
   }
 
   state = {
-    filterDropdownVisible: false,
+    filterNameDropdownVisible: false,
+    filterDetailDropdownVisible: false,
     data: this.getProducts(),
-    searchText: '',
-    filtered: false,
+    searchNameText: '',
+    searchDetailText: '',
+    nameFiltered: false,
+    detailFiltered: false,
     previewVisible: false,  // 是否显示图片预览modal
     previewImages: [] // 要预览的图片
   };
@@ -59,16 +62,37 @@ export default class App extends Component {
     this.setState({previewVisible: false});
   };
 
-  onInputChange = (e) => {
-    this.setState({ searchText: e.target.value });
+  onNameInputChange = (e) => {
+    this.setState({ searchNameText: e.target.value });
   }
-  onSearch = () => {
-    const { searchText } = this.state;
-    const reg = new RegExp(searchText, 'gi');
+  onSearchName = () => {
+    // reset state data to do filter
+    const data = this.getProducts();
+    // when detail already filtered 
+    if (this.state.detailFiltered) {
+      // if name also filtered, reset nameFiltered
+      if(this.state.nameFiltered) {
+        this.state.detailFiltered = false;
+      } else { // but name not filtered, keep detail filtered results
+        data = this.state.data;
+      }
+    }
+
+    // if search text is empty, set nameFiltered to false, do nothing
+    if(!this.state.searchNameText) {
+      return this.setState({
+        filterNameDropdownVisible: false,
+        nameFiltered: !!searchNameText,
+        data: data
+      });
+    }
+  
+    const { searchNameText } = this.state;
+    const reg = new RegExp(searchNameText, 'gi');
     this.setState({
-      filterDropdownVisible: false,
-      filtered: !!searchText,
-      data: this.getProducts().map((record) => {
+      filterNameDropdownVisible: false,
+      nameFiltered: !!searchNameText,
+      data: data.map((record) => {
         const match = record.name.match(reg);
         if (!match) {
           return null;
@@ -86,8 +110,63 @@ export default class App extends Component {
       }).filter(record => !!record),
     });
   }
+  onDetailInputChange = (e) => {
+    this.setState({ searchDetailText: e.target.value });
+  }
+  onSearchDetail = () => {
+    // reset state data to do detail filter
+    const data = this.getProducts();
+    // when name already filtered 
+    if (this.state.nameFiltered) {
+      // And detail also filtered, reset nameFiltered
+      if (this.state.detailFiltered) {
+        this.state.nameFiltered = false;
+      } else { // if detail not filtered, keep name filtered results
+        data = this.state.data;
+      }
+    }
+
+    // if search text is empty, don't do detail filter
+    if(!this.state.searchDetailText) {
+      return this.setState({
+        filterDetailDropdownVisible: false,
+        detailFiltered: !!searchDetailText,
+        data: data
+      });
+    }
+
+    const { searchDetailText } = this.state;
+    const reg = new RegExp(searchDetailText, 'gi');
+    this.setState({
+      filterDetailDropdownVisible: false,
+      detailFiltered: !!searchDetailText,
+      data: data.map((record) => {
+        const match = record.detail.match(reg);
+        if (!match) {
+          return null;
+        }
+        return {
+          ...record,
+          detail: (
+            <span>
+              {record.detail.split(reg).map((text, i) => (
+                i > 0 ? [<span className="highlight" key={i}>{match[0]}</span>, text] : text
+              ))}
+            </span>
+          ),
+        };
+      }).filter(record => !!record),
+    });
+  }
+
   render() {
     const columns = [{
+      title: 'Id',
+      dataIndex: '_id',
+      key: '_id',
+      defaultSortOrder: 'ascend',
+      sorter: (a, b) => a._id - b._id,
+    },{
       title: 'Picture',
       dataIndex: 'picture',
       key: 'picture',
@@ -103,36 +182,72 @@ export default class App extends Component {
           <Input
             ref={ele => this.searchInput = ele}
             placeholder="Search name"
-            value={this.state.searchText}
-            onChange={this.onInputChange}
-            onPressEnter={this.onSearch}
+            value={this.state.searchNameText}
+            onChange={this.onNameInputChange}
+            onPressEnter={this.onSearchName}
           />
-          <Button type="primary" onClick={this.onSearch}>Search</Button>
+          <Button type="primary" onClick={this.onSearchName}>Search</Button>
         </div>
       ),
-      filterIcon: <Icon type="search" style={{ color: this.state.filtered ? '#108ee9' : '#aaa' }} />,
-      filterDropdownVisible: this.state.filterDropdownVisible,
+      filterIcon: <Icon type="search" style={{ color: this.state.nameFiltered ? '#108ee9' : '#aaa' }} />,
+      filterDropdownVisible: this.state.filterNameDropdownVisible,
       onFilterDropdownVisibleChange: (visible) => {
         this.setState({
-          filterDropdownVisible: visible,
+          filterNameDropdownVisible: visible,
         }, () => this.searchInput && this.searchInput.focus());
       },
     }, {
       title: 'Number',
       dataIndex: 'number',
-      key: 'number'
+      key: 'number',
+      sorter: (a, b) => a.number - b.number,
+    }, {
+      title: 'Category',
+      dataIndex: 'category',
+      key: 'category',
+      filters: [{
+        text: '电子',
+        value: '电子',
+      }, {
+        text: '儿童',
+        value: '儿童',
+      }, {
+        text: '运动户外',
+        value: '运动户外',
+      }, {
+        text: '家居',
+        value: '家居',
+      }, {
+        text: '办公／文具',
+        value: '办公／文具',
+      }, {
+        text: '珠宝服饰',
+        value: '珠宝服饰',
+      }],
+      onFilter: (value, record) => record.category.indexOf(value) === 0,
     }, {
       title: 'Detail',
       dataIndex: 'detail',
       key: 'detail',
-      filters: [{
-        text: '假花',
-        value: '假花',
-      }, {
-        text: '杯托',
-        value: '杯托',
-      }],
-      onFilter: (value, record) => record.detail.indexOf(value) === 0,
+      filterDropdown: (
+        <div className="custom-filter-dropdown">
+          <Input
+            ref={ele => this.searchInput = ele}
+            placeholder="Search detail"
+            value={this.state.searchDetailText}
+            onChange={this.onDetailInputChange}
+            onPressEnter={this.onSearchDetail}
+          />
+          <Button type="primary" onClick={this.onSearchDetail}>Search</Button>
+        </div>
+      ),
+      filterIcon: <Icon type="search" style={{ color: this.state.detailFiltered ? '#108ee9' : '#aaa' }} />,
+      filterDropdownVisible: this.state.filterDetailDropdownVisible,
+      onFilterDropdownVisibleChange: (visible) => {
+        this.setState({
+          filterDetailDropdownVisible: visible,
+        }, () => this.searchInput && this.searchInput.focus());
+      },
     }];
     return (
       <div className="container">
